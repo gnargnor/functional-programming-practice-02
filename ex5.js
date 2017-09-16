@@ -1,9 +1,46 @@
+var helpers = {
+  maxWorkTime: 600,
+  minWorkDescriptionLength: 5,
+  maxVisibleWorkDescriptionLength: 20,
+
+
+  validateWorkEntry: function validateWorkEntry(description,minutes) {
+    if (description.length < minWorkDescriptionLength) return false;
+    if (
+      /^\s*$/.test(minutes) ||
+      Number.isNaN(Number(minutes)) ||
+      minutes < 0 ||
+      minutes > maxWorkTime
+    ) {
+      return false;
+    }
+
+    return true;
+  },
+
+  formatWorkDescription: function formatWorkDescription(description) {
+    if (description.length > maxVisibleWorkDescriptionLength) {
+      description = `${description.substr(0,maxVisibleWorkDescriptionLength)}...`;
+    }
+    return description;
+  },
+
+  formatTime: function formatTime(time) {
+    var hours = Math.floor(time / 60);
+    var minutes = time % 60;
+    if (hours == 0 && minutes == 0) return "";
+    if (minutes < 10) minutes = `0${minutes}`;
+    return `${hours}:${minutes}`;
+  }
+}
+
+
 var App = (function App () {
   const projectTemplate = "<div class='project-entry'><h3 class='project-description' rel='js-project-description'></h3><ul class='work-entries' rel='js-work-entries'></ul><span class='work-time' rel='js-work-time'></span></div>";
   const workEntryTemplate = "<li class='work-entry'><span class='work-time' rel='js-work-time'></span><span class='work-description' rel='js-work-description'></span></li>";
-  const maxVisibleWorkDescriptionLength = 20;
-  const minWorkDescriptionLength = 5;
-  const maxWorkTime = 600;
+  
+  
+
 
   var projects = [];
 
@@ -55,19 +92,7 @@ var App = (function App () {
     $workEntryDescription[0].focus();
   }
 
-  function validateWorkEntry(description,minutes) {
-    if (description.length < minWorkDescriptionLength) return false;
-    if (
-      /^\s*$/.test(minutes) ||
-      Number.isNaN(Number(minutes)) ||
-      minutes < 0 ||
-      minutes > maxWorkTime
-    ) {
-      return false;
-    }
-
-    return true;
-  }
+  
 
   function addProject(description) {
     var projectEntryData;
@@ -197,20 +222,6 @@ var App = (function App () {
     }
   }
 
-  function formatWorkDescription(description) {
-    if (description.length > maxVisibleWorkDescriptionLength) {
-      description = `${description.substr(0,maxVisibleWorkDescriptionLength)}...`;
-    }
-    return description;
-  }
-
-  function formatTime(time) {
-    var hours = Math.floor(time / 60);
-    var minutes = time % 60;
-    if (hours == 0 && minutes == 0) return "";
-    if (minutes < 10) minutes = `0${minutes}`;
-    return `${hours}:${minutes}`;
-  }
 })();
 
 App.init();
