@@ -112,44 +112,47 @@ function setupUI () {
 
     $workEntryDescription.val("");
     $workEntryTime.val("");
-    addWorkToProject(Number(projectId),description,Number(minutes));
+    App.addWorkToProject(Number(projectId),description,Number(minutes));
     $workEntryDescription[0].focus();
   }
 
-  function addProjectToList(projectEntryData) {
-    let {id, description} = projectEntryData;
+  function addProjectToList(project) {
+    var projectId = project.id;
+    var projectDescription = project.description;
     var $project = $(projectTemplate);
-    $project.attr("data-project-id",id);
-    $project.find("[rel*=js-project-description]").text(description);
+    $project.attr("data-project-id",projectId);
+    $project.find("[rel*=js-project-description]").text(projectDescription);
     $projectList.append($project);
 
-    projectElements[id] = $project;
+    projectElements[projectId] = $project;
   }
 
-  function addProjectSelection(projectEntryData) {
-    let {id, description} = projectEntryData;
+  function addProjectSelection(project) {
+    var projectId = project.getId();
+    var projectDescription = project.getDescription();
+
     var $option = $("<option></option>");
-    $option.attr("value",id);
-    $option.text(description);
+    $option.attr("value",projectId);
+    $option.text(projectDescription);
     $workEntrySelectProject.append($option);
   }
 
-  function addWorkEntryToList(projectEntryData, workEntryData) {
-    var $projectEntry = projectElements[projectEntryData.id];
+  function addWorkEntryToList(projectId, workEntryData) {
+    var $projectEntry = projectElements[projectId];
     var $projectWorkEntries = $projectEntry.find("[rel*=js-work-entries]");
 
     // create a new DOM element for the work entry
     var $workEntry = $(workEntryTemplate);
     $workEntry.attr("data-work-entry-id",workEntryData.id);
-    $workEntry.find("[rel*=js-work-time]").text((workEntryData.time));
+    $workEntry.find("[rel*=js-work-time]").text(Helpers.formatTime(workEntryData.time));
     setupWorkDescription(workEntryData,$workEntry.find("[rel*=js-work-description]"));
 
     workElements[workEntryData.id] = $workEntry;
 
     // multiple work entries now?
-    if (App.getWorkEntryCount(projectEntryData.id)) {
+    if (App.getWorkEntryCount(projectId)) {
       { let adjacentWorkEntryId, insertBefore;
-        [ adjacentWorkEntryId, insertBefore ] = App.getWorkEntryLocation(projectEntryData, workEntryData.id);
+        [ adjacentWorkEntryId, insertBefore ] = App.getWorkEntryLocation(projectId, workEntryData.id);
 
         // insert the entry into the correct location in DOM
         if (insertBefore) {
@@ -167,9 +170,9 @@ function setupUI () {
     }
   }
 
-  function updateProjectTotalTime(projectEntryData) {
-    var $projectEntry = projectEntryData.$element;
-    $projectEntry.find("> [rel*=js-work-time]").text(Helpers.formatTime(projectEntryData.time)).show();
+  function updateProjectTotalTime(project) {
+    var $projectEntry = projectElements[project.id];
+    $projectEntry.find("> [rel*=js-work-time]").text(Helpers.formatTime(project.time)).show();
   }
 
   function updateWorkLogTotalTime() {
@@ -200,16 +203,11 @@ function setupApp (UI) {
   // **************************
 
   function addProject(description) {
-    var projectEntryData;
+    var project = Project(description);
+    projects.push(project);
 
-    { let projectId;
-      projectId = Math.round(Math.random()*1E4);
-      projectEntryData = { id: projectId, description: description, work: [], time: 0 };
-    }
-    projects.push(projectEntryData);
-
-    UI.addProjectToList(projectEntryData);
-    UI.addProjectSelection(projectEntryData);
+    UI.addProjectToList(project);
+    UI.addProjectSelection(project);
   }
 
   function findProjectEntry(projectId) {
@@ -221,47 +219,82 @@ function setupApp (UI) {
   }
 
   function addWorkToProject (projectId,description,minutes) {
-    projects.time = (projects.time || 0) + minutes;
-
-    var projectEntryData = findProjectEntry(projectId);
-    projectEntryData.time = (projectEntryData.time || 0) + minutes;
+    totalTime = (totalTime || 0) + minutes;
+    
+    var project = findProjectEntry(projectId);
+    console.log(project);
 
     // create a new work entry for the list
-    var workEntryData = { id: projectEntryData.work.length + 1, description: description, time: minutes };
-    projectEntryData.work.push(workEntryData);
+    var workEntryData = { description: description, time: minutes };
+    projects.addWork(workEntryData);
 
-    // multiple work entries now?
-    if (projectEntryData.work.length > 1) {
-      // sort work entries in descending order of time spent
-      projectEntryData.work = projectEntryData.work.slice().sort(function sortTimeDescending(a,b){
-        return b.time - a.time;
-      });
-    }
-
-    UI.addWorkEntryToList(projectEntryData,workEntryData);
-    UI.updateProjectTotalTime(projectEntryData);
+    UI.addWorkEntryToList(projectId,workEntryData);
+    UI.updateProjectTotalTime(project);
     UI.updateWorkLogTotalTime();
   }
 
   function getWorkEntryCount (projectId) {
-    let projectEntryData = findProjectEntry(projectId);
-    return projectEntryData.work.length;
+    let project = findProjectEntry(projectId);
+    return project.work.length;
   }
 
   function getWorkEntryLocation (projectEntryData, workEntryId) {
+    
+  }
+};
+
+function Project (description) {
+  let projectId = Math.round(Math.random()*1E4);
+  let time = 0;
+  let work = [];
+
+  var publicAPI = {
+    getId: getId,
+    getDescription: getDescription,
+    getTime: getTime,
+    addWork: addWork,
+    getWorkEntryCount: getWorkEntryCount,
+    getWorkEntryLocation: getWorkEntryLocation
+  };
+
+  return publicAPI;
+
+  // **************************************************************
+
+  function getId () {
+    return projectId;
+  }
+
+  function getDescription () {
+    return description;
+  }
+
+  function getTime () {
+    return time;
+  }
+
+  function addWork (workEntryData) {
+
+  }
+
+  function getWorkEntryCount () {
+    return work.length;
+  }
+
+  function getWorkEntryLocation (workEntryId) {
     var entryIdx;
-		for (let i = 0; i < projectEntryData.work.length; i++) {
-			if (projectEntryData.work[i].id == workEntryId) {
+		for (let i = 0; i < work.length; i++) {
+			if (work[i].id == workEntryId) {
 				entryIdx = i;
 				break;
 			}
     }
     
-    if (entryIdx < (projectEntryData.work.length - 1)) {
-			return [ projectEntryData.work[entryIdx + 1].id, /*insertBefore=*/true ];
+    if (entryIdx < (work.length - 1)) {
+			return [ work[entryIdx + 1].id, /*insertBefore=*/true ];
 		}
 		else {
-			return [ projectEntryData.work[entryIdx - 1].id, /*insertBefore=*/false ];
+			return [ work[entryIdx - 1].id, /*insertBefore=*/false ];
 		}
   }
-};
+}
